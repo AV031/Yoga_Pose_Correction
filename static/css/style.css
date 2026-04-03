@@ -426,10 +426,26 @@ html, body {
     height: 100%;
     background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
     width: 0%;
-    transition: width 0.3s ease;
+    transition: width 0.3s ease, background 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.confidence-fill.good {
+    background: linear-gradient(90deg, #00D084, #4EE1A7);
+}
+
+.confidence-fill.warning {
+    background: linear-gradient(90deg, #FFA500, #FFD080);
+}
+
+.confidence-fill.danger {
+    background: linear-gradient(90deg, #FF4757, #FF7A7F);
+}
+
+.confidence-fill.disabled {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .confidence-text {

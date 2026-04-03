@@ -105,8 +105,16 @@ function setupSocketListeners() {
         updateConnectionStatus(false);
         console.log('Disconnected from server:', reason);
         showNotification('Disconnected from server: ' + reason, 'warning');
+    });
+
+    socket.on('connect_error', (error) => {
+        updateConnectionStatus(false);
         console.error('Socket connect_error:', error);
         showNotification('Socket connect error: ' + (error.message || error), 'error');
+    });
+
+    socket.on('reconnect_attempt', (attempt) => {
+        console.log('Socket reconnect attempt', attempt);
     });
 
     socket.on('response', (data) => {
@@ -260,14 +268,27 @@ function handlePoseDetected(data) {
     document.getElementById('detectedPose').textContent = `${lastPoseState.pose}${sourceTag}`;
     
     // Update confidence
-    const confidence = (lastPoseState.confidence * 100).toFixed(1);
+    const confidence = Number((lastPoseState.confidence * 100).toFixed(1));
+    const confidenceFill = document.getElementById('confidenceFill');
     document.getElementById('confidenceText').textContent = `${confidence}%`;
-    document.getElementById('confidenceFill').style.width = `${confidence}%`;
-    
+    confidenceFill.style.width = `${confidence}%`;
+
+    // Set confidence color tier
+    confidenceFill.classList.remove('good', 'warning', 'danger', 'disabled');
+    if (confidence >= 85) {
+        confidenceFill.classList.add('good');
+    } else if (confidence >= 70) {
+        confidenceFill.classList.add('warning');
+    } else if (confidence > 0) {
+        confidenceFill.classList.add('danger');
+    } else {
+        confidenceFill.classList.add('disabled');
+    }
+
     // Update accuracy
-    const accuracy = (data.accuracy * 100).toFixed(1);
+    const accuracy = Number((data.accuracy * 100).toFixed(1));
     document.getElementById('accuracyPercent').textContent = accuracy;
-    updateAccuracyCircle(parseFloat(accuracy));
+    updateAccuracyCircle(accuracy);
     
     // Update metrics
     if (data.stats) {
@@ -331,7 +352,10 @@ function handleNoPersonDetected(data) {
 
     document.getElementById('detectedPose').textContent = 'No Person Detected';
     document.getElementById('confidenceText').textContent = '0%';
-    document.getElementById('confidenceFill').style.width = '0%';
+    const confidenceFill = document.getElementById('confidenceFill');
+    confidenceFill.style.width = '0%';
+    confidenceFill.classList.remove('good', 'warning', 'danger');
+    confidenceFill.classList.add('disabled');
     document.getElementById('accuracyPercent').textContent = '0';
     updateAccuracyCircle(0);
     document.getElementById('feedbackList').innerHTML = '<p class="placeholder">Position yourself in front of the camera</p>';
