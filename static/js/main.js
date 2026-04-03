@@ -3,12 +3,22 @@
    ============================================ */
 
 // Global variables
-window.socket = io();
-const socket = window.socket;
 window.currentSessionId = null;
 let currentSessionId = null;
 let sessionStartTime = null;
 let poses = [];
+
+window.socket = io(window.location.origin, {
+    transports: ['websocket', 'polling'],
+    path: '/socket.io',
+    autoConnect: true,
+    timeout: 20000,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 500,
+    timeout: 20000
+});
+const socket = window.socket;
 
 // DOM Elements
 const navLinks = document.querySelectorAll('.nav-link');
@@ -72,20 +82,32 @@ function setupSocketListeners() {
     socket.on('connect', () => {
         updateConnectionStatus(true);
         console.log('Connected to server');
+        showNotification('Connected to server', 'success');
     });
-    
-    socket.on('disconnect', () => {
+
+    socket.on('connect_timeout', () => {
         updateConnectionStatus(false);
-        console.log('Disconnected from server');
+        console.error('Socket connect_timeout');
+        showNotification('Socket timeout connecting to server', 'error');
     });
-    
+
+    socket.on('disconnect', (reason) => {
+        updateConnectionStatus(false);
+        console.log('Disconnected from server:', reason);
+        showNotification('Disconnected from server: ' + reason, 'warning');
+        console.error('Socket connect_error:', error);
+        showNotification('Socket connect error: ' + (error.message || error), 'error');
+    });
+
     socket.on('response', (data) => {
         console.log('Server response:', data);
     });
-    
+
     socket.on('error', (data) => {
+        updateConnectionStatus(false);
         console.error('Socket error:', data);
-        showNotification('Connection Error', 'error');
+        const msg = data && data.message ? data.message : JSON.stringify(data);
+        showNotification('Server error: ' + msg, 'error');
     });
     
     socket.on('pose_detected', handlePoseDetected);

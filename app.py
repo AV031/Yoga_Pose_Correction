@@ -222,6 +222,8 @@ def process_frame(data):
             print(f"[Pose] No landmarks detected for session {session_id}")
             emit('no_person_detected', {'message': 'No person detected in frame'})
             return
+        else:
+            print(f"[Pose] landmarks detected ({len(landmarks)} floats) for session {session_id}")
 
         # Build detectable angles for analysis
         detected_angles = pose_detector.get_key_angles(landmarks)
