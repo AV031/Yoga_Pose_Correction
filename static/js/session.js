@@ -99,8 +99,19 @@ async function startSession() {
         
         // Attach stream to video element
         videoFeed.srcObject = videoStream;
-        videoFeed.play().catch(e => console.error('Error playing video:', e));
-        
+        videoFeed.style.display = 'block';
+        videoFeed.width = 1280;
+        videoFeed.height = 720;
+        videoFeed.play().then(() => {
+            console.log('Video playing from camera.');
+        }).catch(e => {
+            console.error('Error playing video:', e);
+            showNotification('Unable to play camera stream: ' + e.message, 'error');
+        });
+
+        // Make overlay canvas transparent while waiting for detection
+        detectionCanvas.style.background = 'transparent';
+
         // Start server session
         console.log('Starting server session...');
         const response = await fetch('/api/session/start', {
@@ -302,6 +313,8 @@ function startFrameCapture() {
         detectionCanvas.width = width;
         detectionCanvas.height = height;
 
+        // Clear overlay before drawing
+        ctx.clearRect(0, 0, width, height);
         ctx.drawImage(videoFeed, 0, 0, width, height);
 
         const imageData = detectionCanvas.toDataURL('image/jpeg', 0.8);
