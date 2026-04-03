@@ -6,7 +6,6 @@ Checks dependencies and installs required packages
 
 import subprocess
 import sys
-import os
 
 def check_python_version():
     """Check if Python version is compatible"""
@@ -23,9 +22,12 @@ def check_python_version():
 def check_pip():
     """Check if pip is available"""
     try:
-        import pip
-        print("✅ pip is available")
-        return True
+        import importlib.util
+        if importlib.util.find_spec('pip') is not None:
+            print("✅ pip is available")
+            return True
+        print("❌ pip is not available")
+        return False
     except ImportError:
         print("❌ pip is not available")
         return False

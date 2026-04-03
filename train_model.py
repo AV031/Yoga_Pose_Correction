@@ -1,4 +1,3 @@
-import os
 import cv2
 import numpy as np
 import json
@@ -206,9 +205,6 @@ def create_synthetic_training_data(output_path: str = "synthetic_yoga_data.json"
     print("Creating synthetic training data...")
     
     for pose_name in tqdm(reference_poses.get_all_pose_names(), desc="Generating poses"):
-        pose_info = reference_poses.get_pose_info(pose_name)
-        target_angles = pose_info['key_angles']
-        
         # Generate synthetic landmarks that match target angles
         # This is a simplified approach - in practice, you'd want more sophisticated generation
         landmarks_list = []

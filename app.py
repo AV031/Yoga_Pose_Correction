@@ -4,7 +4,7 @@ Yoga Pose Estimator Web Application
 Flask backend for professional web UI
 """
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 import cv2
@@ -13,8 +13,6 @@ import json
 import base64
 import os
 from datetime import datetime
-import threading
-from queue import Queue
 
 from pose_detector import PoseDetector
 from pose_analyzer import PoseAnalyzer
@@ -109,11 +107,10 @@ def get_poses():
 @app.route('/api/session/start', methods=['POST'])
 def start_session():
     """Start a new pose estimation session"""
-    data = request.json
     session_id = f"session_{int(datetime.now().timestamp())}"
     tracker = PoseSessionTracker(session_id)
     active_sessions[session_id] = tracker
-    
+
     return jsonify({
         'session_id': session_id,
         'status': 'started',
@@ -190,8 +187,7 @@ def handle_disconnect():
 def start_pose_detection(data):
     """Start real-time pose detection"""
     session_id = data.get('session_id')
-    pose_target = data.get('target_pose', 'All')
-    
+
     if session_id not in active_sessions:
         emit('error', {'message': 'Invalid session'})
         return

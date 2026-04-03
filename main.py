@@ -8,8 +8,8 @@ import os
 import sys
 import argparse
 import time
-from typing import Optional
 
+import importlib.util
 from camera_interface import CameraInterface
 from train_model import DataCollector, ModelTrainer, create_synthetic_training_data
 from pose_analyzer import PoseAnalyzer
@@ -29,26 +29,18 @@ def print_banner():
     """
     print(banner)
 
+
 def check_dependencies():
     """Check if all required dependencies are installed"""
     required_packages = [
-        'cv2', 'mediapipe', 'tensorflow', 'numpy', 
-        'sklearn', 'matplotlib', 'pillow', 'tqdm', 'pandas'
+        'cv2', 'mediapipe', 'tensorflow', 'numpy',
+        'sklearn', 'matplotlib', 'PIL', 'tqdm', 'pandas'
     ]
-    
+
     missing_packages = []
-    
+
     for package in required_packages:
-        try:
-            if package == 'cv2':
-                import cv2
-            elif package == 'sklearn':
-                import sklearn
-            elif package == 'pillow':
-                from PIL import Image
-            else:
-                __import__(package)
-        except ImportError:
+        if importlib.util.find_spec(package) is None:
             missing_packages.append(package)
     
     if missing_packages:

@@ -2,11 +2,10 @@ import cv2
 import numpy as np
 import os
 import time
-from typing import Optional, Callable, Dict, List, Tuple
+from typing import Optional, Callable, Dict, Tuple
 from pose_detector import PoseDetector
 from lstm_model import YogaPoseLSTM
 from pose_analyzer import PoseAnalyzer
-import threading
 
 class CameraInterface:
     def __init__(self, camera_id: int = 0):
@@ -216,21 +215,20 @@ class CameraInterface:
         """Draw pose skeleton with angle highlights"""
         if landmarks is None:
             return image
-        
+
         # Get current angles
         angles = self.pose_detector.get_key_angles(landmarks)
-        
+
         # Draw landmarks and connections
         image = self.pose_detector.draw_landmarks(image, landmarks)
-        
+
         # Highlight problematic joints
         analysis = self.pose_analyzer.analyze_pose(angles)
         angle_feedback = analysis.get('angle_feedback', {})
-        
-        # Highlight joints with high error
-        mp_pose = self.pose_detector.mp_pose
+
+        # Map joint names to landmark indices
         h, w = image.shape[:2]
-        
+
         for joint, error in angle_feedback.items():
             if error > 0.3:  # High error threshold
                 if 'elbow' in joint:
@@ -241,14 +239,14 @@ class CameraInterface:
                     landmark_idx = 11 if 'left' in joint else 12
                 else:
                     continue
-                
+
                 if len(landmarks) > landmark_idx * 4 + 1:
                     x = int(landmarks[landmark_idx * 4] * w)
                     y = int(landmarks[landmark_idx * 4 + 1] * h)
-                    
+
                     # Draw highlight circle
                     cv2.circle(image, (x, y), 8, self.colors['error'], 3)
-        
+
         return image
     
     def process_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, Dict]:

@@ -1,7 +1,7 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 
 class PoseDetector:
     def __init__(self):
@@ -115,14 +115,6 @@ class PoseDetector:
 
         return angles
 
-    def detect_pose(self, image: np.ndarray) -> Tuple[Optional[np.ndarray], np.ndarray]:
-        """Detect landmarks and draw pose skeleton over image"""
-        landmarks = self.extract_landmarks(image)
-        frame_with_pose = image.copy()
-        if landmarks is not None:
-            frame_with_pose = self.draw_landmarks(frame_with_pose, landmarks)
-        return landmarks, frame_with_pose
-    
     def close(self):
         """Clean up resources"""
         try:
