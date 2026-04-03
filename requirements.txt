@@ -1,0 +1,19 @@
+# Core ML/CV packages - stable versions
+tensorflow==2.15.0
+opencv-python==4.9.0.80
+mediapipe==0.10.11
+
+# Data processing
+numpy==1.26.3
+scikit-learn==1.4.0
+pandas==2.2.0
+
+# Visualization
+matplotlib==3.8.2
+pillow==10.2.0
+
+# Utilities
+tqdm==4.66.2
+
+# Optional: For better performance on some systems
+# tensorflow-metal==1.1.0  # Uncomment for macOS Apple Silicon

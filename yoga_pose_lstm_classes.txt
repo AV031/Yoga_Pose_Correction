@@ -1,0 +1,10 @@
+bridge_pose
+child_pose
+cobra_pose
+downward_dog
+mountain_pose
+plank
+tree_pose
+triangle_pose
+warrior_1
+warrior_2

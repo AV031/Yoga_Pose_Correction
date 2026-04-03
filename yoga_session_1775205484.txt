@@ -1,0 +1,9 @@
+Yoga Pose Session Summary
+==============================
+Total Poses: 168
+Average Accuracy: 0.0%
+Most Practiced: unknown
+Improvement Trend: stable
+
+Pose Distribution:
+  unknown: 168
