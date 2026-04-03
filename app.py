@@ -29,6 +29,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Initialize components
 pose_detector = PoseDetector()
+pose_analyzer = PoseAnalyzer()
 reference_poses = ReferencePoses()
 lstm_model = LSTMPoseClassifier()
 lstm_model.load_model()
