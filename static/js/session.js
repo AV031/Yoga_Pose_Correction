@@ -6,21 +6,43 @@ let videoStream = null;
 let isCapturing = false;
 let sessionInterval = null;
 
-const videoFeed = document.getElementById('videoFeed');
-const detectionCanvas = document.getElementById('detectionCanvas');
-const startCaptureBtn = document.getElementById('startCaptureBtn');
-const stopCaptureBtn = document.getElementById('stopCaptureBtn');
-const endSessionBtn = document.getElementById('endSessionBtn');
-const saveSessionBtn = document.getElementById('saveSessionBtn');
-const sessionIdDisplay = document.getElementById('sessionIdDisplay');
-const sessionStatus = document.getElementById('sessionStatus');
-const sessionDuration = document.getElementById('sessionDuration');
+// DOM elements - declare but don't initialize
+let videoFeed = null;
+let detectionCanvas = null;
+let startCaptureBtn = null;
+let stopCaptureBtn = null;
+let endSessionBtn = null;
+let saveSessionBtn = null;
+let sessionIdDisplay = null;
+let sessionStatus = null;
+let sessionDuration = null;
 
 /* ========================
    SESSION INITIALIZATION
    ======================== */
+function initializeDOMElements() {
+    videoFeed = document.getElementById('videoFeed');
+    detectionCanvas = document.getElementById('detectionCanvas');
+    startCaptureBtn = document.getElementById('startCaptureBtn');
+    stopCaptureBtn = document.getElementById('stopCaptureBtn');
+    endSessionBtn = document.getElementById('endSessionBtn');
+    saveSessionBtn = document.getElementById('saveSessionBtn');
+    sessionIdDisplay = document.getElementById('sessionIdDisplay');
+    sessionStatus = document.getElementById('sessionStatus');
+    sessionDuration = document.getElementById('sessionDuration');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    initializeDOMElements();
     setupSessionListeners();
+});
+
+// Also wait for window load as backup
+window.addEventListener('load', () => {
+    if (!startCaptureBtn) {
+        initializeDOMElements();
+        setupSessionListeners();
+    }
 });
 
 function setupSessionListeners() {
@@ -43,7 +65,16 @@ function setupSessionListeners() {
    ======================== */
 async function startSession() {
     try {
+        console.log('Starting session...');
+        
+        if (!videoFeed) {
+            console.error('Video element not found');
+            showNotification('Error: Video element not found', 'error');
+            return;
+        }
+        
         // Request camera access
+        console.log('Requesting camera access...');
         videoStream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: 'user',
@@ -53,9 +84,14 @@ async function startSession() {
             audio: false
         });
         
+        console.log('Camera accessed successfully');
+        
+        // Attach stream to video element
         videoFeed.srcObject = videoStream;
+        videoFeed.play().catch(e => console.error('Error playing video:', e));
         
         // Start server session
+        console.log('Starting server session...');
         const response = await fetch('/api/session/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -86,11 +122,17 @@ async function startSession() {
         // Start frame processing
         startFrameCapture();
         
-        showNotification('Session started', 'success');
+        showNotification('Session started - Camera ready', 'success');
+        console.log('Session started successfully');
         
     } catch (error) {
-        console.error('Error accessing camera:', error);
-        showNotification('Camera access denied', 'error');
+        console.error('Error starting session:', error);
+        const errorMsg = error.name === 'NotAllowedError' 
+            ? 'Camera access denied. Please allow camera in browser settings.'
+            : error.name === 'NotFoundError'
+            ? 'No camera found. Please check your camera connection.'
+            : `Camera error: ${error.message}`;
+        showNotification(errorMsg, 'error');
     }
 }
 
