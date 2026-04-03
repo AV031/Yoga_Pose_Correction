@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 import time
 from typing import Optional, Callable, Dict, List, Tuple
 from pose_detector import PoseDetector
@@ -44,22 +45,47 @@ class CameraInterface:
     def initialize_camera(self) -> bool:
         """Initialize camera capture"""
         self.cap = cv2.VideoCapture(self.camera_id)
+
         if not self.cap.isOpened():
-            print(f"Error: Could not open camera {self.camera_id}")
+            print(f"Warning: Could not open camera {self.camera_id}. Trying fallback camera ids...")
+            for candidate_id in range(0, 5):
+                if candidate_id == self.camera_id:
+                    continue
+                temp_cap = cv2.VideoCapture(candidate_id)
+                if temp_cap.isOpened():
+                    print(f"✅ Fallback camera found: {candidate_id}")
+                    self.camera_id = candidate_id
+                    self.cap = temp_cap
+                    break
+                temp_cap.release()
+
+        if not self.cap.isOpened():
+            print("Error: Could not open any camera (0-4). Please plug in a camera or set the correct --camera ID.")
             return False
-        
+
         # Set camera properties
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
-        
+
+        print(f"✅ Camera initialized (camera_id={self.camera_id})")
         return True
     
-    def load_lstm_model(self, model_path: str):
+    def load_lstm_model(self, model_path: Optional[str]):
         """Load trained LSTM model"""
+        if not model_path:
+            print("⚠️ No LSTM model path provided; running pose detection without LSTM prediction.")
+            self.lstm_model = None
+            return
+
+        if not os.path.exists(model_path):
+            print(f"⚠️ LSTM model file not found at {model_path}; running pose detection without LSTM prediction.")
+            self.lstm_model = None
+            return
+
         self.lstm_model = YogaPoseLSTM()
         self.lstm_model.load_model(model_path)
-        print(f"Loaded LSTM model from {model_path}")
+        print(f"✅ Loaded LSTM model from {model_path}")
     
     def draw_info_panel(self, image: np.ndarray, analysis: Dict) -> np.ndarray:
         """Draw information panel on the image"""

@@ -1,8 +1,17 @@
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
+# Support both TensorFlow-integrated Keras and standalone Keras fallback
+try:
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization
+    from tensorflow.keras.optimizers import Adam
+    from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+except ImportError:
+    from keras.models import Sequential
+    from keras.layers import LSTM, Dense, Dropout, BatchNormalization
+    from keras.optimizers import Adam
+    from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
 import numpy as np
 from typing import List, Tuple
 

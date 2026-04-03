@@ -72,30 +72,36 @@ def setup_model():
     else:
         print("❌ No trained model found")
         choice = input("Would you like to train a new model? (y/n): ").lower()
-        
+
         if choice == 'y':
             print("Training new model...")
             try:
                 # Create synthetic training data
                 synthetic_data = create_synthetic_training_data()
-                
+
                 # Train the model
                 trainer = ModelTrainer(sequence_length=30)
                 X, y, class_names = trainer.prepare_training_data(synthetic_data)
                 results = trainer.train_model(X, y, class_names, model_path)
-                
+
                 print(f"✅ Model trained and saved to {model_path}")
                 print(f"   Test accuracy: {results['test_accuracy']:.4f}")
                 return model_path
-                
+
             except Exception as e:
                 print(f"❌ Error training model: {e}")
                 return None
-        else:
-            print("❌ Cannot proceed without a trained model")
-            return None
 
-def run_live_demo():
+        else:
+            fallback = input("Continue without LSTM model (pose detection only)? (y/n): ").lower()
+            if fallback == 'y':
+                print("⚠️ Running without LSTM model. Pose detection will still work, but classification may be disabled.")
+                return None
+            else:
+                print("❌ Cannot proceed without a trained model")
+                return None
+
+def run_live_demo(camera_id: int = 0):
     """Run live camera demo"""
     print("\n" + "="*50)
     print("LIVE YOGA POSE ESTIMATION DEMO")
@@ -108,12 +114,14 @@ def run_live_demo():
     
     # Setup model
     model_path = setup_model()
-    if not model_path:
-        return
-    
+
     # Initialize camera interface
-    camera = CameraInterface(camera_id=0)
-    camera.load_lstm_model(model_path)
+    camera = CameraInterface(camera_id=camera_id)
+
+    if model_path:
+        camera.load_lstm_model(model_path)
+    else:
+        camera.load_lstm_model(None)
     
     try:
         camera.run_camera()
@@ -121,8 +129,6 @@ def run_live_demo():
         print("\nDemo interrupted by user")
     except Exception as e:
         print(f"❌ Error during demo: {e}")
-    finally:
-        camera.cleanup()
 
 def collect_training_data():
     """Collect training data from camera"""
@@ -269,7 +275,7 @@ def main():
     
     # Run based on mode
     if args.mode == 'demo':
-        run_live_demo()
+        run_live_demo(camera_id=args.camera)
     elif args.mode == 'train':
         setup_model()
     elif args.mode == 'collect':

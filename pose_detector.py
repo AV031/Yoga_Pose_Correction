@@ -77,6 +77,44 @@ class PoseDetector:
         if landmarks is None or len(landmarks) < 33 * 4:
             return {}
 
+        def calculate_angle(p1, p2, p3):
+            v1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
+            v2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
+            cos_angle = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-8)
+            angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
+            return np.degrees(angle)
+
+        angles = {}
+
+        try:
+            left_shoulder = landmarks[11*4:11*4+2]
+            left_elbow = landmarks[13*4:13*4+2]
+            left_wrist = landmarks[15*4:15*4+2]
+            angles['left_elbow'] = calculate_angle(left_shoulder, left_elbow, left_wrist)
+
+            right_shoulder = landmarks[12*4:12*4+2]
+            right_elbow = landmarks[14*4:14*4+2]
+            right_wrist = landmarks[16*4:16*4+2]
+            angles['right_elbow'] = calculate_angle(right_shoulder, right_elbow, right_wrist)
+
+            left_hip = landmarks[23*4:23*4+2]
+            left_knee = landmarks[25*4:25*4+2]
+            left_ankle = landmarks[27*4:27*4+2]
+            angles['left_knee'] = calculate_angle(left_hip, left_knee, left_ankle)
+
+            right_hip = landmarks[24*4:24*4+2]
+            right_knee = landmarks[26*4:26*4+2]
+            right_ankle = landmarks[28*4:28*4+2]
+            angles['right_knee'] = calculate_angle(right_hip, right_knee, right_ankle)
+
+            angles['left_shoulder'] = calculate_angle(left_elbow, left_shoulder, left_hip)
+            angles['right_shoulder'] = calculate_angle(right_elbow, right_shoulder, right_hip)
+
+        except Exception:
+            return {}
+
+        return angles
+
     def detect_pose(self, image: np.ndarray) -> Tuple[Optional[np.ndarray], np.ndarray]:
         """Detect landmarks and draw pose skeleton over image"""
         landmarks = self.extract_landmarks(image)
@@ -84,49 +122,6 @@ class PoseDetector:
         if landmarks is not None:
             frame_with_pose = self.draw_landmarks(frame_with_pose, landmarks)
         return landmarks, frame_with_pose
-        
-        angles = {}
-        
-        # Helper function to calculate angle between three points
-        def calculate_angle(p1, p2, p3):
-            v1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
-            v2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
-            
-            cos_angle = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
-            angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
-            return np.degrees(angle)
-        
-        # Left elbow angle (shoulder-elbow-wrist)
-        left_shoulder = landmarks[11*4:11*4+2]
-        left_elbow = landmarks[13*4:13*4+2]
-        left_wrist = landmarks[15*4:15*4+2]
-        angles['left_elbow'] = calculate_angle(left_shoulder, left_elbow, left_wrist)
-        
-        # Right elbow angle
-        right_shoulder = landmarks[12*4:12*4+2]
-        right_elbow = landmarks[14*4:14*4+2]
-        right_wrist = landmarks[16*4:16*4+2]
-        angles['right_elbow'] = calculate_angle(right_shoulder, right_elbow, right_wrist)
-        
-        # Left knee angle (hip-knee-ankle)
-        left_hip = landmarks[23*4:23*4+2]
-        left_knee = landmarks[25*4:25*4+2]
-        left_ankle = landmarks[27*4:27*4+2]
-        angles['left_knee'] = calculate_angle(left_hip, left_knee, left_ankle)
-        
-        # Right knee angle
-        right_hip = landmarks[24*4:24*4+2]
-        right_knee = landmarks[26*4:26*4+2]
-        right_ankle = landmarks[28*4:28*4+2]
-        angles['right_knee'] = calculate_angle(right_hip, right_knee, right_ankle)
-        
-        # Left shoulder angle (elbow-shoulder-hip)
-        angles['left_shoulder'] = calculate_angle(left_elbow, left_shoulder, left_hip)
-        
-        # Right shoulder angle
-        angles['right_shoulder'] = calculate_angle(right_elbow, right_shoulder, right_hip)
-        
-        return angles
     
     def close(self):
         """Clean up resources"""
