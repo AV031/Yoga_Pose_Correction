@@ -46,6 +46,15 @@ window.addEventListener('load', () => {
 });
 
 function setupSessionListeners() {
+    if (!startCaptureBtn || !stopCaptureBtn || !endSessionBtn || !saveSessionBtn) {
+        console.warn('Session buttons not fully present, UI may not work: ', {
+            startCaptureBtn,
+            stopCaptureBtn,
+            endSessionBtn,
+            saveSessionBtn
+        });
+    }
+
     if (startCaptureBtn) {
         startCaptureBtn.addEventListener('click', startSession);
     }
@@ -58,6 +67,12 @@ function setupSessionListeners() {
     if (saveSessionBtn) {
         saveSessionBtn.addEventListener('click', saveSession);
     }
+
+    // For quick manual testing
+    window.startYogaSession = startSession;
+    window.stopYogaSession = stopSession;
+    window.endYogaSession = endSession;
+    window.saveYogaSession = saveSession;
 }
 
 /* ========================
@@ -144,8 +159,11 @@ async function startSession() {
         // Start frame processing
         startFrameCapture();
         
+        window.currentSessionId = data.session_id;
+        currentSessionId = data.session_id;
+
         showNotification('Session started - Camera ready', 'success');
-        console.log('Session started successfully');
+        console.log('Session started successfully', { sessionId: data.session_id });
         
     } catch (error) {
         console.error('Error starting session:', error);

@@ -3,7 +3,9 @@
    ============================================ */
 
 // Global variables
-const socket = io();
+window.socket = io();
+const socket = window.socket;
+window.currentSessionId = null;
 let currentSessionId = null;
 let sessionStartTime = null;
 let sessionInterval = null;
