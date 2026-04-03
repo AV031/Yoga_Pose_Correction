@@ -8,6 +8,16 @@ let currentSessionId = null;
 let sessionStartTime = null;
 let poses = [];
 
+// Pose smoothing state (keep old pose briefly on transient drop)
+const NO_PERSON_HOLD_MS = 800;
+let lastPoseState = {
+    pose: 'No Person Detected',
+    confidence: 0,
+    accuracy: 0,
+    source: 'none',
+    timestamp: Date.now()
+};
+
 window.socket = io(window.location.origin, {
     transports: ['websocket', 'polling'],
     path: '/socket.io',
@@ -236,11 +246,21 @@ function formatDate(dateString) {
    POSE DETECTION HANDLERS
    ======================== */
 function handlePoseDetected(data) {
-    // Update pose name
-    document.getElementById('detectedPose').textContent = data.pose || 'Unknown';
+    // Save smoothing state
+    lastPoseState = {
+        pose: data.pose || 'Unknown',
+        confidence: data.confidence || 0,
+        accuracy: data.accuracy || 0,
+        source: data.pose_source || 'unknown',
+        timestamp: Date.now()
+    };
+
+    // Update pose name with source
+    const sourceTag = lastPoseState.source ? ` (${lastPoseState.source})` : '';
+    document.getElementById('detectedPose').textContent = `${lastPoseState.pose}${sourceTag}`;
     
     // Update confidence
-    const confidence = (data.confidence * 100).toFixed(1);
+    const confidence = (lastPoseState.confidence * 100).toFixed(1);
     document.getElementById('confidenceText').textContent = `${confidence}%`;
     document.getElementById('confidenceFill').style.width = `${confidence}%`;
     
@@ -286,9 +306,35 @@ function handleDetectionStarted(data) {
 }
 
 function handleNoPersonDetected(data) {
+    const now = Date.now();
+    const elapsed = now - lastPoseState.timestamp;
+
+    if (elapsed < NO_PERSON_HOLD_MS && lastPoseState.pose !== 'No Person Detected') {
+        // Keep last detected pose briefly to avoid flicker
+        const sourceTag = lastPoseState.source ? ` (${lastPoseState.source})` : '';
+        document.getElementById('detectedPose').textContent = `${lastPoseState.pose}${sourceTag}`;
+        document.getElementById('confidenceText').textContent = `${(lastPoseState.confidence * 100).toFixed(1)}%`;
+        document.getElementById('confidenceFill').style.width = `${(lastPoseState.confidence * 100).toFixed(1)}%`;
+        document.getElementById('accuracyPercent').textContent = (lastPoseState.accuracy * 100).toFixed(1);
+        updateAccuracyCircle((lastPoseState.accuracy * 100).toFixed(1));
+        return;
+    }
+
+    // After hold period, show back no-person state
+    lastPoseState = {
+        pose: 'No Person Detected',
+        confidence: 0,
+        accuracy: 0,
+        source: 'none',
+        timestamp: Date.now()
+    };
+
     document.getElementById('detectedPose').textContent = 'No Person Detected';
-    document.getElementById('feedbackList').innerHTML = 
-        '<p class="placeholder">Position yourself in front of the camera</p>';
+    document.getElementById('confidenceText').textContent = '0%';
+    document.getElementById('confidenceFill').style.width = '0%';
+    document.getElementById('accuracyPercent').textContent = '0';
+    updateAccuracyCircle(0);
+    document.getElementById('feedbackList').innerHTML = '<p class="placeholder">Position yourself in front of the camera</p>';
 }
 
 function updateAccuracyCircle(accuracy) {

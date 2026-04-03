@@ -247,12 +247,14 @@ def process_frame(data):
         # If LSTM is not available, use pose analyzer motif
         analyzer_pose_key = analysis.get('reference_match')
         pose_name = detected_pose_name or analyzer_pose_key or 'unknown'
+        pose_source = 'lstm' if detected_pose_name else 'analysis'
 
         if pose_name and pose_name != 'unknown':
             pose_info = reference_poses.get_pose_info(pose_name)
             pose_label = pose_info.get('name', pose_name)
         else:
             pose_label = 'Unknown Pose'
+            pose_source = 'none'
 
         # Get accuracy (prefer analyzer score)
         accuracy = float(analysis.get('accuracy_score', 0.0))
@@ -269,6 +271,7 @@ def process_frame(data):
         emit('pose_detected', {
             'pose': pose_label,
             'pose_key': pose_name,
+            'pose_source': pose_source,
             'confidence': float(confidence),
             'accuracy': float(accuracy),
             'frame': f'data:image/jpeg;base64,{img_str}',
