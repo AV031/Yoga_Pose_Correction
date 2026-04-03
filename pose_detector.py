@@ -11,32 +11,45 @@ class PoseDetector:
             static_image_mode=False,
             model_complexity=1,
             enable_segmentation=False,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+            min_detection_confidence=0.3,
+            min_tracking_confidence=0.3
         )
         
     def extract_landmarks(self, image: np.ndarray) -> Optional[np.ndarray]:
         """Extract pose landmarks from image"""
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.pose.process(image_rgb)
-        
+
         if results.pose_landmarks:
             landmarks = []
             for landmark in results.pose_landmarks.landmark:
                 landmarks.extend([landmark.x, landmark.y, landmark.z, landmark.visibility])
             return np.array(landmarks)
         return None
-    
-    def draw_landmarks(self, image: np.ndarray, landmarks: np.ndarray) -> np.ndarray:
-        """Draw pose landmarks on image"""
-        if landmarks is not None:
-            # Create a dummy pose landmarks object for drawing
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            results = self.pose.process(image_rgb)
-            if results.pose_landmarks:
-                self.mp_drawing.draw_landmarks(
-                    image, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS)
-        
+
+    def detect_pose(self, image: np.ndarray) -> Tuple[Optional[np.ndarray], np.ndarray]:
+        """Detect landmarks and overlay pose on frame"""
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = self.pose.process(image_rgb)
+
+        output_frame = image.copy()
+        if results.pose_landmarks:
+            self.mp_drawing.draw_landmarks(output_frame, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS)
+            landmarks = []
+            for landmark in results.pose_landmarks.landmark:
+                landmarks.extend([landmark.x, landmark.y, landmark.z, landmark.visibility])
+            return np.array(landmarks), output_frame
+
+        return None, output_frame
+
+    def draw_landmarks(self, image: np.ndarray, results=None) -> np.ndarray:
+        """Draw pose landmarks given a mediapipe result object"""
+        if results is None:
+            return image
+
+        if getattr(results, 'pose_landmarks', None):
+            self.mp_drawing.draw_landmarks(image, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS)
+
         return image
     
     def normalize_landmarks(self, landmarks: np.ndarray) -> np.ndarray:
@@ -63,6 +76,14 @@ class PoseDetector:
         """Calculate key joint angles from landmarks"""
         if landmarks is None or len(landmarks) < 33 * 4:
             return {}
+
+    def detect_pose(self, image: np.ndarray) -> Tuple[Optional[np.ndarray], np.ndarray]:
+        """Detect landmarks and draw pose skeleton over image"""
+        landmarks = self.extract_landmarks(image)
+        frame_with_pose = image.copy()
+        if landmarks is not None:
+            frame_with_pose = self.draw_landmarks(frame_with_pose, landmarks)
+        return landmarks, frame_with_pose
         
         angles = {}
         

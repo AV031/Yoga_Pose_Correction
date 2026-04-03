@@ -218,57 +218,67 @@ def process_frame(data):
         # Detect pose
         landmarks, frame_with_pose = pose_detector.detect_pose(frame)
 
-        if landmarks is not None:
-            # Build detectable angles for analysis
-            detected_angles = pose_detector.get_key_angles(landmarks)
-            analysis = pose_analyzer.analyze_pose(detected_angles)
-
-            # Add to buffer for LSTM
-            if session_id not in landmarks_buffers:
-                landmarks_buffers[session_id] = []
-
-            landmarks_buffers[session_id].append(landmarks)
-            if len(landmarks_buffers[session_id]) > 60:  # Keep last 60 frames
-                landmarks_buffers[session_id].pop(0)
-
-            # Classify with LSTM (using realtime prediction)
-            if lstm_model:
-                pose_name, confidence = lstm_model.predict_realtime(landmarks_buffers[session_id])
-            else:
-                pose_name = "No Model"
-                confidence = 0.0
-
-            # Get accuracy (prefer analyzer result) and fallback to pose reference
-            if analysis.get('accuracy_score') is not None:
-                accuracy = float(analysis.get('accuracy_score', 0.0))
-            else:
-                reference_pose = reference_poses.get_pose(pose_name)
-                accuracy = pose_analyzer.calculate_accuracy(detected_angles, reference_pose) if reference_pose else 0.0
-
-            # Track session data
-            tracker = active_sessions[session_id]
-            tracker.add_pose_data(pose_name, accuracy, landmarks.tolist())
-
-            # Encode response frame to send back to client
-            _, buffer = cv2.imencode('.jpg', frame_with_pose)
-            img_str = base64.b64encode(buffer).decode()
-
-            emit('pose_detected', {
-                'pose': pose_name,
-                'confidence': float(confidence),
-                'accuracy': float(accuracy),
-                'frame': f'data:image/jpeg;base64,{img_str}',
-                'feedback': analysis.get('feedback', []),
-                'stats': {
-                    'shoulder_angle': analysis.get('shoulder_angle'),
-                    'elbow_angle': analysis.get('elbow_angle'),
-                    'knee_angle': analysis.get('knee_angle'),
-                    'stability': analysis.get('stability_score')
-                }
-            })
-        else:
+        if landmarks is None:
+            print(f"[Pose] No landmarks detected for session {session_id}")
             emit('no_person_detected', {'message': 'No person detected in frame'})
-            
+            return
+
+        # Build detectable angles for analysis
+        detected_angles = pose_detector.get_key_angles(landmarks)
+        analysis = pose_analyzer.analyze_pose(detected_angles)
+
+        # Add to buffer for LSTM
+        if session_id not in landmarks_buffers:
+            landmarks_buffers[session_id] = []
+
+        landmarks_buffers[session_id].append(landmarks)
+        if len(landmarks_buffers[session_id]) > 60:  # Keep last 60 frames
+            landmarks_buffers[session_id].pop(0)
+
+        # Classify with LSTM (using realtime prediction)
+        if lstm_model:
+            detected_pose_name, confidence = lstm_model.predict_realtime(landmarks_buffers[session_id])
+        else:
+            detected_pose_name = None
+            confidence = 0.0
+
+        # If LSTM is not available, use pose analyzer motif
+        analyzer_pose_key = analysis.get('reference_match')
+        pose_name = detected_pose_name or analyzer_pose_key or 'unknown'
+
+        if pose_name and pose_name != 'unknown':
+            pose_info = reference_poses.get_pose_info(pose_name)
+            pose_label = pose_info.get('name', pose_name)
+        else:
+            pose_label = 'Unknown Pose'
+
+        # Get accuracy (prefer analyzer score)
+        accuracy = float(analysis.get('accuracy_score', 0.0))
+        confidence = float(confidence if confidence is not None else accuracy)
+
+        # Track session data
+        tracker = active_sessions[session_id]
+        tracker.add_pose_data(pose_name, accuracy, landmarks.tolist())
+
+        # Encode response frame to send back to client
+        _, buffer = cv2.imencode('.jpg', frame_with_pose)
+        img_str = base64.b64encode(buffer).decode()
+
+        emit('pose_detected', {
+            'pose': pose_label,
+            'pose_key': pose_name,
+            'confidence': float(confidence),
+            'accuracy': float(accuracy),
+            'frame': f'data:image/jpeg;base64,{img_str}',
+            'feedback': analysis.get('feedback', []),
+            'stats': {
+                'shoulder_angle': analysis.get('shoulder_angle'),
+                'elbow_angle': analysis.get('elbow_angle'),
+                'knee_angle': analysis.get('knee_angle'),
+                'stability': analysis.get('stability_score')
+            }
+        })
+
     except Exception as e:
         print(f"Error processing frame: {str(e)}")
         emit('error', {'message': str(e)})
