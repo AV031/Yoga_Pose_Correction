@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yoga Pose Estimator - Professional AI Trainer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-om"></i>
+                <h1>Yoga Pose Estimator</h1>
+                <span class="tagline">AI-Powered Personal Trainer</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#home" class="nav-link active" data-section="home">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="#session" class="nav-link" data-section="session">
+                    <i class="fas fa-video"></i> Live Session
+                </a>
+                <a href="#history" class="nav-link" data-section="history">
+                    <i class="fas fa-history"></i> History
+                </a>
+                <a href="#about" class="nav-link" data-section="about">
+                    <i class="fas fa-info-circle"></i> About
+                </a>
+            </nav>
+            <div class="connection-status">
+                <span class="status-indicator"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="hero">
+                <div class="hero-content">
+                    <h2>Perfect Your Yoga Practice with AI</h2>
+                    <p>Get real-time feedback on your yoga poses with advanced computer vision and machine learning</p>
+                    <button class="btn btn-primary btn-large" onclick="navigateToSession()">
+                        <i class="fas fa-play"></i> Start Live Session
+                    </button>
+                </div>
+                <div class="hero-features">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <h3>Real-Time Detection</h3>
+                        <p>Instant pose recognition using advanced MediaPipe technology</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h3>AI Analysis</h3>
+                        <p>Deep learning LSTM model for accurate pose classification</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3>Progress Tracking</h3>
+                        <p>Monitor your improvement over time with detailed analytics</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-checkmark-circle"></i>
+                        </div>
+                        <h3>Instant Feedback</h3>
+                        <p>Get personalized corrections and tips for each pose</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Supported Poses Section -->
+            <section class="poses-showcase">
+                <h2>Supported Yoga Poses</h2>
+                <div class="poses-grid" id="posesGrid">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </section>
+        </section>
+
+        <!-- Live Session Section -->
+        <section id="session" class="section">
+            <div class="session-container">
+                <!-- Left Panel: Video Feed -->
+                <div class="session-left">
+                    <div class="video-container">
+                        <video id="videoFeed" playsinline autoplay muted></video>
+                        <canvas id="detectionCanvas" class="detection-overlay"></canvas>
+                        <div class="video-controls">
+                            <button id="startCaptureBtn" class="btn btn-success">
+                                <i class="fas fa-camera"></i> Start Capture
+                            </button>
+                            <button id="stopCaptureBtn" class="btn btn-danger" style="display:none;">
+                                <i class="fas fa-stop"></i> Stop Capture
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Analysis -->
+                <div class="session-right">
+                    <!-- Session Info -->
+                    <div class="info-panel">
+                        <h3>Session Info</h3>
+                        <div class="info-item">
+                            <span class="label">Session ID:</span>
+                            <span class="value" id="sessionIdDisplay">—</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Status:</span>
+                            <span class="value status-badge" id="sessionStatus">Ready</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Duration:</span>
+                            <span class="value" id="sessionDuration">00:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Current Pose Detection -->
+                    <div class="detection-panel">
+                        <h3>Pose Detection</h3>
+                        <div class="pose-display">
+                            <div class="pose-name" id="detectedPose">Waiting...</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="confidenceFill"></div>
+                                <span class="confidence-text" id="confidenceText">0%</span>
+                            </div>
+                        </div>
+                        <div class="accuracy-section">
+                            <h4>Accuracy</h4>
+                            <div class="accuracy-ring">
+                                <svg viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="45" class="accuracy-background"></circle>
+                                    <circle cx="50" cy="50" r="45" class="accuracy-progress" id="accuracyCircle"></circle>
+                                </svg>
+                                <div class="accuracy-text">
+                                    <span id="accuracyPercent">0</span>%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Real-time Metrics -->
+                    <div class="metrics-panel">
+                        <h3>Angle Measurements</h3>
+                        <div class="metrics-grid">
+                            <div class="metric">
+                                <span class="metric-label">Shoulder</span>
+                                <span class="metric-value" id="shoulderAngle">—</span>°
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Elbow</span>
+                                <span class="metric-value" id="elbowAngle">—</span>°
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Knee</span>
+                                <span class="metric-value" id="kneeAngle">—</span>°
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Stability</span>
+                                <span class="metric-value" id="stability">—</span>%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feedback -->
+                    <div class="feedback-panel">
+                        <h3>Feedback & Tips</h3>
+                        <div id="feedbackList" class="feedback-list">
+                            <p class="placeholder">Hold a pose for real-time feedback</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Session Controls -->
+            <div class="session-footer">
+                <button id="endSessionBtn" class="btn btn-danger">
+                    <i class="fas fa-times"></i> End Session
+                </button>
+                <button id="saveSessionBtn" class="btn btn-primary" disabled>
+                    <i class="fas fa-save"></i> Save Session
+                </button>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="history" class="section">
+            <div class="history-container">
+                <h2>Session History</h2>
+                <div class="history-filters">
+                    <button class="filter-btn active" data-filter="all">All Sessions</button>
+                    <button class="filter-btn" data-filter="today">Today</button>
+                    <button class="filter-btn" data-filter="week">This Week</button>
+                    <button class="filter-btn" data-filter="month">This Month</button>
+                </div>
+                <div id="historyList" class="history-list">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading sessions...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="section">
+            <div class="about-container">
+                <h2>About Yoga Pose Estimator</h2>
+                <div class="about-grid">
+                    <div class="about-card">
+                        <h3>Technology Stack</h3>
+                        <ul>
+                            <li><strong>Vision:</strong> MediaPipe Pose Detection</li>
+                            <li><strong>AI Model:</strong> 3-Layer LSTM Neural Network</li>
+                            <li><strong>Backend:</strong> Flask + Socket.io</li>
+                            <li><strong>Frontend:</strong> HTML5 Canvas + JavaScript</li>
+                            <li><strong>Video Processing:</strong> OpenCV</li>
+                        </ul>
+                    </div>
+                    <div class="about-card">
+                        <h3>Key Features</h3>
+                        <ul>
+                            <li>Real-time pose detection (33 skeletal landmarks)</li>
+                            <li>Support for 10+ yoga poses</li>
+                            <li>Accuracy scoring with reference poses</li>
+                            <li>Angle measurements for key joints</li>
+                            <li>Session tracking and analytics</li>
+                            <li>Personalized feedback system</li>
+                        </ul>
+                    </div>
+                    <div class="about-card">
+                        <h3>Supported Poses</h3>
+                        <ul>
+                            <li>Mountain Pose (Tadasana)</li>
+                            <li>Warrior I & II (Virabhadrasana)</li>
+                            <li>Tree Pose (Vrikshasana)</li>
+                            <li>Downward Dog (Adho Mukha Svanasana)</li>
+                            <li>Child Pose (Balasana)</li>
+                            <li>Cobra Pose (Bhujangasana)</li>
+                            <li>Triangle Pose (Trikonasana)</li>
+                            <li>Plank Pose</li>
+                            <li>Bridge Pose (Setu Bandhasana)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="about-section">
+                    <h3>How It Works</h3>
+                    <div class="process-flow">
+                        <div class="process-step">
+                            <div class="step-number">1</div>
+                            <h4>Capture</h4>
+                            <p>Webcam captures your movement</p>
+                        </div>
+                        <div class="process-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="process-step">
+                            <div class="step-number">2</div>
+                            <h4>Detect</h4>
+                            <p>MediaPipe detects body landmarks</p>
+                        </div>
+                        <div class="process-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="process-step">
+                            <div class="step-number">3</div>
+                            <h4>Classify</h4>
+                            <p>LSTM model classifies the pose</p>
+                        </div>
+                        <div class="process-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="process-step">
+                            <div class="step-number">4</div>
+                            <h4>Feedback</h4>
+                            <p>Real-time corrections provided</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2024 Yoga Pose Estimator. All rights reserved. | Built with AI Technology</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/session.js') }}"></script>
+</body>
+</html>

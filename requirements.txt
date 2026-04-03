@@ -1,4 +1,4 @@
-# Core ML/CV packages - stable versions
+# Core ML/CV packages
 tensorflow==2.15.0
 opencv-python==4.9.0.80
 mediapipe==0.10.11
@@ -11,6 +11,12 @@ pandas==2.2.0
 # Visualization
 matplotlib==3.8.2
 pillow==10.2.0
+
+# Web Framework
+Flask==3.0.0
+flask-cors==4.0.0
+python-socketio==5.10.0
+python-engineio==4.8.0
 
 # Utilities
 tqdm==4.66.2
