@@ -67,12 +67,23 @@ async function startSession() {
     try {
         console.log('Starting session...');
         
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showNotification('Browser does not support camera access.', 'error');
+            return;
+        }
+
         if (!videoFeed) {
             console.error('Video element not found');
             showNotification('Error: Video element not found', 'error');
             return;
         }
-        
+
+        const permissionStatus = await navigator.permissions.query({ name: 'camera' }).catch(() => null);
+        if (permissionStatus && permissionStatus.state === 'denied') {
+            showNotification('Camera permission is blocked in browser settings.', 'error');
+            return;
+        }
+
         // Request camera access
         console.log('Requesting camera access...');
         videoStream = await navigator.mediaDevices.getUserMedia({
@@ -270,35 +281,41 @@ function showSessionSummary(summary) {
    FRAME CAPTURE & PROCESSING
    ======================== */
 function startFrameCapture() {
-    const ctx = detectionCanvas.getContext('2d');
-    
-    function captureFrame() {
-        if (!isCapturing || !videoStream) return;
-        
-        // Set canvas size to match video
-        if (videoFeed.videoWidth > 0) {
-            detectionCanvas.width = videoFeed.videoWidth;
-            detectionCanvas.height = videoFeed.videoHeight;
-            
-            // Draw video frame
-            ctx.drawImage(videoFeed, 0, 0);
-            
-            // Convert to base64
-            const imageData = detectionCanvas.toDataURL('image/jpeg', 0.8);
-            
-            // Send to server
-            if (window.socket && window.currentSessionId) {
-                window.socket.emit('process_frame', {
-                    session_id: window.currentSessionId,
-                    image: imageData
-                });
-            }
-        }
-        
-        // Continue capturing at ~30 FPS
-        setTimeout(captureFrame, 33);
+    if (!detectionCanvas || !videoFeed) {
+        console.error('Canvas or video element not defined');
+        return;
     }
-    
+    const ctx = detectionCanvas.getContext('2d');
+
+    function captureFrame() {
+        if (!isCapturing || !videoStream) {
+            return;
+        }
+
+        if (videoFeed.readyState < 2 || videoFeed.videoWidth === 0 || videoFeed.videoHeight === 0) {
+            requestAnimationFrame(captureFrame);
+            return;
+        }
+
+        const width = videoFeed.videoWidth;
+        const height = videoFeed.videoHeight;
+        detectionCanvas.width = width;
+        detectionCanvas.height = height;
+
+        ctx.drawImage(videoFeed, 0, 0, width, height);
+
+        const imageData = detectionCanvas.toDataURL('image/jpeg', 0.8);
+
+        if (window.socket && window.currentSessionId) {
+            window.socket.emit('process_frame', {
+                session_id: window.currentSessionId,
+                image: imageData
+            });
+        }
+
+        setTimeout(() => requestAnimationFrame(captureFrame), 33);
+    }
+
     captureFrame();
 }
 
