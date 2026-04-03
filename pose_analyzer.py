@@ -43,6 +43,37 @@ class PoseAnalyzer:
                 detected_angles, best_pose, angle_diffs)
         
         return analysis
+
+    def calculate_accuracy(self, detected_angles: Dict[str, float], reference_pose: object) -> float:
+        """Calculate accuracy against a reference pose definition or name."""
+        if not detected_angles:
+            return 0.0
+
+        if isinstance(reference_pose, str):
+            reference_pose_data = self.reference_poses.get_pose_info(reference_pose)
+        elif isinstance(reference_pose, dict):
+            reference_pose_data = reference_pose
+        else:
+            reference_pose_data = {}
+
+        key_angles = reference_pose_data.get('key_angles') if isinstance(reference_pose_data, dict) else None
+        if not key_angles:
+            return 0.0
+
+        # Calculate normalized error across key angles
+        total_error = 0.0
+        matched = 0
+        for joint, target_angle in key_angles.items():
+            if joint in detected_angles:
+                diff = abs(detected_angles[joint] - target_angle)
+                total_error += min(diff / 180.0, 1.0)
+                matched += 1
+
+        if matched == 0:
+            return 0.0
+
+        accuracy = 1.0 - (total_error / matched)
+        return max(0.0, min(1.0, accuracy))
     
     def _generate_overall_feedback(self, accuracy_score: float) -> str:
         """Generate overall feedback based on accuracy score"""

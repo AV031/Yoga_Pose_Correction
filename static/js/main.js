@@ -8,7 +8,6 @@ const socket = window.socket;
 window.currentSessionId = null;
 let currentSessionId = null;
 let sessionStartTime = null;
-let sessionInterval = null;
 let poses = [];
 
 // DOM Elements

@@ -152,9 +152,26 @@ class ReferencePoses:
         if pose_name in self.poses:
             return self.poses[pose_name]
         return {}
+
+    def get_pose(self, pose_name: str) -> Dict:
+        """Alias for get_pose_info to maintain compatibility"""
+        return self.get_pose_info(pose_name)
+
+    def get_poses_list(self) -> List[Dict[str, object]]:
+        """Return pose definitions as a list for frontend APIs"""
+        pose_list = []
+        for pose_key, pose_data in self.poses.items():
+            pose_list.append({
+                'key': pose_key,
+                'name': pose_data.get('name', pose_key),
+                'difficulty': pose_data.get('difficulty', 'unknown'),
+                'description': pose_data.get('description', ''),
+                'key_angles': pose_data.get('key_angles', {})
+            })
+        return pose_list
     
     def calculate_pose_similarity(self, detected_angles: Dict[str, float], 
-                                 reference_pose: str) -> Tuple[float, Dict[str, float]]:
+                                 reference_pose: str):
         """Calculate similarity score between detected pose and reference"""
         if reference_pose not in self.poses:
             return 0.0, {}

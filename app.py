@@ -19,7 +19,14 @@ from queue import Queue
 from pose_detector import PoseDetector
 from pose_analyzer import PoseAnalyzer
 from reference_poses import ReferencePoses
-from lstm_model import LSTMPoseClassifier
+
+# Import LSTM model separately - will be lazy loaded
+try:
+    from lstm_model import YogaPoseLSTM
+    LSTM_AVAILABLE = True
+except ImportError:
+    LSTM_AVAILABLE = False
+    YogaPoseLSTM = None
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -31,8 +38,15 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 pose_detector = PoseDetector()
 pose_analyzer = PoseAnalyzer()
 reference_poses = ReferencePoses()
-lstm_model = LSTMPoseClassifier()
-lstm_model.load_model()
+lstm_model = None
+
+if LSTM_AVAILABLE:
+    try:
+        lstm_model = YogaPoseLSTM()
+        lstm_model.load_model('yoga_pose_lstm.h5')
+    except Exception as e:
+        print(f"Warning: Could not load LSTM model: {e}")
+        lstm_model = None
 
 # Session management
 active_sessions = {}
@@ -42,6 +56,7 @@ os.makedirs(session_data_dir, exist_ok=True)
 # Camera thread management
 camera_threads = {}
 camera_queues = {}
+landmarks_buffers = {}  # Buffer for LSTM sequence
 
 
 class PoseSessionTracker:
@@ -123,6 +138,10 @@ def end_session(session_id):
             'data': tracker.poses_detected
         }, f, indent=2)
     
+    # Clean up buffers
+    if session_id in landmarks_buffers:
+        del landmarks_buffers[session_id]
+    
     del active_sessions[session_id]
     
     return jsonify({
@@ -198,29 +217,42 @@ def process_frame(data):
         
         # Detect pose
         landmarks, frame_with_pose = pose_detector.detect_pose(frame)
-        
+
         if landmarks is not None:
-            # Analyze pose
-            analysis = pose_analyzer.analyze_pose(landmarks)
-            
-            # Classify with LSTM
-            pose_name, confidence = lstm_model.predict(landmarks)
-            
-            # Get accuracy
-            reference_pose = reference_poses.get_pose(pose_name)
-            if reference_pose:
-                accuracy = pose_analyzer.calculate_accuracy(landmarks, reference_pose)
+            # Build detectable angles for analysis
+            detected_angles = pose_detector.get_key_angles(landmarks)
+            analysis = pose_analyzer.analyze_pose(detected_angles)
+
+            # Add to buffer for LSTM
+            if session_id not in landmarks_buffers:
+                landmarks_buffers[session_id] = []
+
+            landmarks_buffers[session_id].append(landmarks)
+            if len(landmarks_buffers[session_id]) > 60:  # Keep last 60 frames
+                landmarks_buffers[session_id].pop(0)
+
+            # Classify with LSTM (using realtime prediction)
+            if lstm_model:
+                pose_name, confidence = lstm_model.predict_realtime(landmarks_buffers[session_id])
             else:
-                accuracy = 0
-            
+                pose_name = "No Model"
+                confidence = 0.0
+
+            # Get accuracy (prefer analyzer result) and fallback to pose reference
+            if analysis.get('accuracy_score') is not None:
+                accuracy = float(analysis.get('accuracy_score', 0.0))
+            else:
+                reference_pose = reference_poses.get_pose(pose_name)
+                accuracy = pose_analyzer.calculate_accuracy(detected_angles, reference_pose) if reference_pose else 0.0
+
             # Track session data
             tracker = active_sessions[session_id]
             tracker.add_pose_data(pose_name, accuracy, landmarks.tolist())
-            
-            # Encode response frame
+
+            # Encode response frame to send back to client
             _, buffer = cv2.imencode('.jpg', frame_with_pose)
             img_str = base64.b64encode(buffer).decode()
-            
+
             emit('pose_detected', {
                 'pose': pose_name,
                 'confidence': float(confidence),
